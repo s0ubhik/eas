@@ -11,30 +11,30 @@ class EAS {
         return substr($data, 0, -$pad);
     }
     
-    public static function encrypt($data, $key) {
-        $key = str_pad($key, 32);
-        $iv = mcrypt_create_iv(16, MCRYPT_DEV_URANDOM);
-        $paddedData = static::pkcs7_pad($data, 16);
-        
-        $ciphertext = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $key, $paddedData, MCRYPT_MODE_CBC, $iv);
-        
-        return base64_encode($iv . $ciphertext);
+    public static function encrypt($msg, $key, $iv = null) {
+        $iv_size = openssl_cipher_iv_length('AES-256-CBC');
+        if (!$iv) {
+            $iv = openssl_random_pseudo_bytes($iv_size);
+        }
+        $encryptedMessage = openssl_encrypt($msg, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+        return base64_encode($iv . $encryptedMessage);
     }
-    
-    public static function decrypt($ciphertext, $key) {
-        $key = str_pad($key, 32); 
-        $data = base64_decode($ciphertext);
+
+    public static function decrypt($encrypted, $key) {
+        $data = base64_decode($encrypted);
+        $iv_size = openssl_cipher_iv_length('AES-256-CBC');
+        $iv = substr($data, 0, $iv_size); // Extract IV
+        $encryptedMessage = substr($data, $iv_size); // Extract encrypted message
         
-        $iv = substr($data, 0, 16); 
-        $encryptedData = substr($data, 16);
-        
-        $decryptedPaddedData = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $key, $encryptedData, MCRYPT_MODE_CBC, $iv);
-        
-        return static::pkcs7_unpad($decryptedPaddedData);
+        // Decrypt the message
+        return openssl_decrypt($encryptedMessage, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
     }
+
     
     public static function generate_key($length = 32) {
         return bin2hex(random_bytes($length/2));
     }
 }
 
+$x = EAS::decrypt("tyVS55kHHaAUWwIByizLwJqI1n4CRUNgrqYyOkMSaIGqdP/1qwy/3f+tWnrtNqgaiFMTQrbG8TShLW8E1Xk04fCRq/Hr+VX/On+5DAotnoytKxaHhqkB4zFQRBu2vzeM", "bd0515d236a7b5825dbf0de50362811a");
+print($x);
